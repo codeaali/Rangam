@@ -98,8 +98,9 @@ export function AdminPage() {
   const [shows, setShows] = useState<AdminShow[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'movies' | 'bookings'>('movies');
+  const [activeTab, setActiveTab] = useState<'movies' | 'bookings' | 'checkin'>('movies');
   const [expandedMovie, setExpandedMovie] = useState<string | null>(null);
+  const [expandedShow, setExpandedShow] = useState<string | null>(null); // For check-in tab
   const [filterShowId, setFilterShowId] = useState<string>('');
   const [checkins, setCheckins] = useState<Record<string, string>>({}); // booking_item_id -> checkin_id
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -319,7 +320,7 @@ export function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 rounded-xl p-1 bg-[#33130d]/5">
-          {(['movies', 'bookings'] as const).map((tab) => (
+          {(['movies', 'bookings', 'checkin'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -328,7 +329,7 @@ export function AdminPage() {
                 activeTab === tab ? 'bg-white text-[#33130d] shadow-sm' : 'text-[#33130d]/60 hover:text-[#33130d]'
               )}
             >
-              {tab}
+              {tab === 'checkin' ? 'Check-In' : tab}
             </button>
           ))}
         </div>
@@ -422,7 +423,7 @@ export function AdminPage() {
               })}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'bookings' ? (
           <div className="space-y-6">
             {/* Filter */}
             <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 movie-shadow border border-[#33130d]/5">
@@ -490,13 +491,7 @@ export function AdminPage() {
                                     <span className="text-xs font-bold uppercase tracking-wider">Checked In</span>
                                   </div>
                                 ) : (
-                                  <button
-                                    onClick={() => handleCheckIn(item.id)}
-                                    className="flex items-center gap-1.5 bg-[#33130d] text-white px-3 py-1.5 rounded-lg hover:bg-[#a41e22] transition-all hover:shadow-md active:scale-95 group"
-                                  >
-                                    <UserCheck className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                    <span className="text-xs font-bold uppercase tracking-wider text-white">Check In</span>
-                                  </button>
+                                  <div className="text-xs font-bold text-[#33130d]/30 italic px-2">Pending</div>
                                 )}
                               </div>
                             </div>
@@ -508,6 +503,105 @@ export function AdminPage() {
                 ));
               })()}
             </div>
+          </div>
+        ) : (
+          /* Check-In Tab (Scanner Mode) */
+          <div className="space-y-4">
+            {movies.map((movie) => {
+              const movieShows = shows.filter((s) => s.movie_id === movie.id);
+              const isMovieExpanded = expandedMovie === movie.id;
+              
+              return (
+                <div key={movie.id} className="bg-white rounded-2xl overflow-hidden movie-shadow border border-[#33130d]/5">
+                  <button 
+                    onClick={() => setExpandedMovie(isMovieExpanded ? null : movie.id)}
+                    className="w-full flex items-center justify-between p-5 hover:bg-[#f9f0e7]/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex bg-[#f9f0e7] rounded-xl p-2.5 text-[#a41e22] shadow-sm">
+                        <Film className="h-6 w-6" />
+                      </div>
+                      <div className="text-left">
+                        <span className="font-cinematic text-xl font-bold text-[#33130d] block">{movie.name}</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-[#33130d]/40">
+                          {movieShows.length} Screening{movieShows.length !== 1 ? 's' : ''} available
+                        </span>
+                      </div>
+                    </div>
+                    {isMovieExpanded ? <ChevronUp className="h-5 w-5 text-[#33130d]/30" /> : <ChevronDown className="h-5 w-5 text-[#33130d]/30" />}
+                  </button>
+
+                  {isMovieExpanded && (
+                    <div className="bg-[#f9f0e7]/30 border-t border-[#33130d]/5 p-4 space-y-3">
+                      {movieShows.map((show) => {
+                        const isShowExpanded = expandedShow === show.id;
+                        const showBookings = bookings.filter(b => 
+                          b.booking_items.some((item: any) => item.show_id === show.id)
+                        );
+
+                        return (
+                          <div key={show.id} className="bg-white rounded-xl border border-[#33130d]/5 overflow-hidden shadow-sm">
+                            <button 
+                              onClick={() => setExpandedShow(isShowExpanded ? null : show.id)}
+                              className="w-full flex items-center justify-between p-4 bg-white hover:bg-[#a41e22]/5 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Clock className="h-4 w-4 text-[#a41e22]" />
+                                <span className="font-bold text-[#33130d]">
+                                  {new Date(show.show_time).toLocaleString('en-US', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                <span className="text-xs bg-[#33130d]/10 px-2 py-0.5 rounded font-bold text-[#33130d]/60">
+                                  {show.booked} Tickets sold
+                                </span>
+                              </div>
+                              {isShowExpanded ? <ChevronUp className="h-4 w-4 text-[#33130d]/20" /> : <ChevronDown className="h-4 w-4 text-[#33130d]/20" />}
+                            </button>
+
+                            {isShowExpanded && (
+                              <div className="border-t border-[#33130d]/5 p-2 space-y-2 bg-[#f9f0e7]/10">
+                                {showBookings.length === 0 ? (
+                                  <div className="py-8 text-center text-sm text-[#33130d]/40 italic">No tickets for this screening.</div>
+                                ) : (
+                                  showBookings.map(b => {
+                                    // Get the specific item for this show from this booking
+                                    const bookingItem = b.booking_items.find((item: any) => item.show_id === show.id);
+                                    const isCheckedIn = !!checkins[bookingItem?.id];
+
+                                    return (
+                                      <div key={b.id} className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-[#33130d]/5 group">
+                                        <div>
+                                          <div className="text-sm font-bold text-[#33130d] truncate max-w-[150px] sm:max-w-none">{b.users?.name}</div>
+                                          <div className="text-[10px] font-mono text-[#a41e22] font-bold uppercase tracking-tight opacity-60">ID: {b.booking_id}</div>
+                                        </div>
+                                        
+                                        {isCheckedIn ? (
+                                          <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                                            <UserCheck className="h-4 w-4" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Checked In</span>
+                                          </div>
+                                        ) : (
+                                          <button
+                                            onClick={() => handleCheckIn(bookingItem.id)}
+                                            className="flex items-center gap-2 bg-[#33130d] text-white px-4 py-2 rounded-lg hover:bg-[#a41e22] transition-all hover:shadow-md active:scale-95 shadow-sm"
+                                          >
+                                            <UserCheck className="h-4 w-4" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Check In</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </main>
