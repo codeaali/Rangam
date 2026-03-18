@@ -1,5 +1,5 @@
 import { cn } from '../../lib/cn';
-import { Clock, ImageOff } from 'lucide-react';
+import { ImageOff } from 'lucide-react';
 import type { Movie, SelectedShow } from '../../types';
 
 interface MovieCardProps {
