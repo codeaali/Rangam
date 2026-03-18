@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 164 30 34;   /* #a41e22 deep cinematic red */
+    --color-bg: 249 240 231;      /* #f9f0e7 warm beige */
+    --color-text: 51 19 13;       /* #33130d dark brown */
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    scroll-behavior: smooth;
+    background-color: rgb(var(--color-bg));
+  }
+
+  body {
+    @apply text-[#33130d] antialiased bg-[#f9f0e7];
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-cinematic {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer utilities {
+  .movie-shadow {
+    box-shadow: 0 12px 32px rgba(51, 19, 13, 0.06), 0 4px 12px rgba(51, 19, 13, 0.04);
+  }
+
+  .movie-shadow-hover {
+    box-shadow: 0 20px 48px rgba(51, 19, 13, 0.1), 0 8px 24px rgba(51, 19, 13, 0.06);
+  }
+
+  .ticket-shadow {
+    box-shadow: 0 24px 64px rgba(164, 30, 34, 0.15), 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(51, 19, 13, 0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(51, 19, 13, 0.3); }
