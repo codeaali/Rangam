@@ -27,25 +27,32 @@ export function ConfirmationPage() {
   const { booking, name } = state;
 
   const downloadPDF = async () => {
-    const element = document.getElementById('ticket-content');
+    const element = document.getElementById('ticket-download-ui');
     if (!element) return;
     
     try {
+      // Temporarily make it visible for capture (off-screen)
+      element.style.display = 'block';
+      
       const canvas = await html2canvas(element, {
-        scale: 2,
-        backgroundColor: '#f9f0e7',
+        scale: 3, // Higher quality for print
+        backgroundColor: '#ffffff',
         logging: false,
-        useCORS: true
+        useCORS: true,
+        allowTaint: true
       });
+      
+      element.style.display = 'none';
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'px',
-        format: [canvas.width / 2, canvas.height / 2]
+        format: [canvas.width / 3, canvas.height / 3]
       });
       
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
-      pdf.save(`Ticket-${booking.bookingId}.pdf`);
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 3, canvas.height / 3);
+      pdf.save(`CineSchool-Ticket-${booking.bookingId}.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
     }
@@ -146,11 +153,81 @@ export function ConfirmationPage() {
             </Button>
           </div>
         </div>
+
+        {/* ── HIDDEN TICKET UI FOR DOWNLOADING ── */}
+        <div id="ticket-download-ui" style={{ display: 'none', width: '400px', backgroundColor: '#ffffff', position: 'absolute', left: '-9999px', top: '0' }}>
+          <div className="p-8 border-4 border-[#33130d] bg-white relative">
+            {/* Ticket Header */}
+            <div className="flex border-b-2 border-dashed border-[#33130d]/20 pb-6 mb-6">
+              <div className="flex-1">
+                <img src="/logo.png" alt="Logo" className="h-10 mb-4" />
+                <h1 className="font-cinematic text-3xl font-bold text-[#33130d] tracking-tighter">OFFICIAL TICKET</h1>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a41e22]">CineSchool Festival 2026</p>
+              </div>
+              <div className="text-right">
+                <div className="font-mono text-xs font-bold text-[#33130d]/40 mb-1">BOOKING REFERENCE</div>
+                <div className="font-mono text-2xl font-black text-[#a41e22] tracking-widest">{booking.bookingId}</div>
+              </div>
+            </div>
+
+            {/* Attendee Details */}
+            <div className="mb-8 p-4 bg-[#f9f0e7]/40 rounded-xl border border-[#33130d]/5">
+              <div className="text-[10px] font-bold text-[#33130d]/40 uppercase tracking-widest mb-1">Ticket Holder</div>
+              <div className="text-xl font-bold text-[#33130d]">{name}</div>
+            </div>
+
+            {/* Movie Details */}
+            <div className="space-y-4">
+              {booking.movies.map((m, i) => (
+                <div key={i} className="flex gap-4 items-center">
+                  <div className="h-16 w-1 flex bg-[#a41e22] rounded-full" />
+                  <div className="flex-1">
+                    <div className="font-bold text-[#33130d] text-base uppercase leading-tight">{m.movieName}</div>
+                    <div className="flex items-center gap-4 mt-1">
+                      <div className="text-[11px] font-bold text-[#33130d]/60">
+                        {new Date(m.showTime).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div className="text-[11px] font-black text-[#a41e22] bg-[#a41e22]/5 px-2 py-0.5 rounded">
+                        {m.seats} SEAT{m.seats > 1 ? 'S' : ''}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer / QR Area Placeholder */}
+            <div className="mt-12 pt-8 border-t-2 border-dashed border-[#33130d]/20 flex items-end justify-between">
+              <div>
+                <p className="text-[9px] font-bold text-[#33130d]/40 uppercase leading-relaxed max-w-[200px]">
+                  * This ticket is only valid for the screenings listed above.<br />
+                  * Please arrive 15 minutes before the show start time.<br />
+                  * Screens are subject to local availability.
+                </p>
+              </div>
+              <div className="p-2 border-2 border-[#33130d] rounded-lg bg-white">
+                {/* Mock QR Code Pattern */}
+                <div className="grid grid-cols-4 gap-0.5 w-12 h-12">
+                  {[...Array(16)].map((_, i) => (
+                    <div key={i} className={`w-full h-full ${Math.random() > 0.5 ? 'bg-[#33130d]' : 'bg-transparent'}`} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Side barcode (visual detail) */}
+            <div className="absolute right-0 top-1/2 -rotate-90 origin-right translate-x-2 flex gap-1 opacity-10">
+              {[...Array(20)].map((_, i) => (
+                <div key={i} style={{ width: Math.random() * 3 + 1 + 'px' }} className="h-4 bg-[#33130d]" />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
       
       <style>{`
         @media print {
-          .no-print { display: none ! alienation; }
+          .no-print { display: none !important; }
         }
       `}</style>
     </div>

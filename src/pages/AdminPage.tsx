@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import {
   Film, Plus, Trash2, RefreshCw, Users,
-  Clock, ChevronDown, ChevronUp, AlertCircle, Check, Lock, Eye, EyeOff, UserCheck
+  Clock, ChevronDown, ChevronUp, AlertCircle, Check, Lock, Eye, EyeOff, UserCheck, Edit2, Save, X, ExternalLink
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -15,7 +15,7 @@ const ADMIN_EMAIL = 'admin@haca.com';
 const ADMIN_PASSWORD = 'Admin@Haca';
 
 // ── Types ───────────────────────────────────────────────────
-interface AdminMovie { id: string; name: string; }
+interface AdminMovie { id: string; name: string; poster_url?: string | null; }
 interface AdminShow { id: string; movie_id: string; show_time: string; seat_limit: number; booked: number; }
 
 // ── Login Form ───────────────────────────────────────────────
@@ -100,7 +100,6 @@ export function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'movies' | 'bookings' | 'checkin'>('movies');
   const [expandedMovie, setExpandedMovie] = useState<string | null>(null);
-  const [expandedShow, setExpandedShow] = useState<string | null>(null); // For check-in tab
   const [filterShowId, setFilterShowId] = useState<string>('');
   const [checkins, setCheckins] = useState<Record<string, string>>({}); // booking_item_id -> checkin_id
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -108,6 +107,13 @@ export function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const movieForm = useForm<{ name: string; poster: FileList }>();
   const showForm = useForm<{ movie_id: string; show_time: string; seat_limit: number }>();
+
+  const [editingMovieId, setEditingMovieId] = useState<string | null>(null);
+  const [editingMovieName, setEditingMovieName] = useState('');
+  const [editingMoviePoster, setEditingMoviePoster] = useState<FileList | null>(null);
+  const [editingShowId, setEditingShowId] = useState<string | null>(null);
+  const [editingShowTime, setEditingShowTime] = useState('');
+  const [editingShowSeats, setEditingShowSeats] = useState<number>(0);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -236,23 +242,59 @@ export function AdminPage() {
     fetchAll();
   };
 
-  const handleCheckIn = async (bookingItemId: string) => {
-    if (checkins[bookingItemId]) {
-      // Already checked in, maybe undo? (Optional, let's just show success)
-      return;
-    }
+  const updateMovie = async (id: string, currentPosterUrl?: string | null) => {
+    if (!editingMovieName.trim()) return;
+    setIsUploading(true);
+    let poster_url = currentPosterUrl;
 
     try {
-      const { error } = await supabase.from('checkins').insert({
-        booking_item_id: bookingItemId
-      });
+      if (editingMoviePoster && editingMoviePoster.length > 0) {
+        const file = editingMoviePoster[0];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
 
-      if (error) throw error;
+        const { error: uploadError } = await supabase.storage
+          .from('posters')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('posters')
+          .getPublicUrl(fileName);
+
+        poster_url = publicUrl;
+      }
+
+      const { error } = await supabase.from('movies').update({ 
+        name: editingMovieName.trim(),
+        poster_url
+      }).eq('id', id);
       
-      showToast('User checked in!');
+      if (error) throw error;
+      showToast('Movie updated');
+      setEditingMovieId(null);
+      setEditingMoviePoster(null);
       fetchAll();
     } catch (err: any) {
-      showToast(err.message || 'Check-in failed', false);
+      showToast(err.message, false);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const updateShow = async (id: string) => {
+    try {
+      const { error } = await supabase.from('shows').update({
+        show_time: new Date(editingShowTime).toISOString(),
+        seat_limit: editingShowSeats
+      }).eq('id', id);
+      if (error) throw error;
+      showToast('Show updated');
+      setEditingShowId(null);
+      fetchAll();
+    } catch (err: any) {
+      showToast(err.message, false);
     }
   };
 
@@ -395,6 +437,41 @@ export function AdminPage() {
                         <button onClick={() => setExpandedMovie(isExpanded ? null : movie.id)} className="text-[#33130d]/40 border border-transparent hover:bg-[#33130d]/5 p-2 rounded-lg transition-colors">
                           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </button>
+                        {editingMovieId === movie.id ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-1">
+                              <input
+                                className="bg-white border border-[#33130d]/20 rounded px-2 py-1 text-sm font-semibold text-[#33130d] focus:outline-none focus:ring-2 focus:ring-[#a41e22]/20"
+                                value={editingMovieName}
+                                onChange={(e) => setEditingMovieName(e.target.value)}
+                                autoFocus
+                                placeholder="Movie name"
+                              />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="text-[10px] text-[#33130d]/60"
+                                onChange={(e) => setEditingMoviePoster(e.target.files)}
+                              />
+                            </div>
+                            <button onClick={() => updateMovie(movie.id, movie.poster_url)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition-colors" disabled={isUploading}>
+                              {isUploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            </button>
+                            <button onClick={() => { setEditingMovieId(null); setEditingMoviePoster(null); }} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditingMovieId(movie.id);
+                              setEditingMovieName(movie.name);
+                            }}
+                            className="text-[#33130d]/40 hover:text-[#a41e22] hover:bg-[#a41e22]/5 p-2 rounded-lg transition-colors"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        )}
                         <button onClick={() => deleteMovie(movie.id)} className="text-[#33130d]/40 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -404,16 +481,58 @@ export function AdminPage() {
                       <div className="border-t border-[#33130d]/5 bg-[#f9f0e7]/50 p-4 space-y-2">
                         {movieShows.map((show) => (
                           <div key={show.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-white border border-[#33130d]/5 px-4 py-3 shadow-sm">
-                            <span className="text-sm font-semibold text-[#33130d]">
-                              {new Date(show.show_time).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
-                            </span>
-                            <div className="flex items-center gap-4">
-                              <span className="text-xs font-semibold text-[#33130d]/60">{show.booked}/{show.seat_limit} booked</span>
-                              <div className="h-2 w-24 rounded-full bg-[#33130d]/10 overflow-hidden">
-                                <div className="h-full rounded-full bg-[#a41e22]" style={{ width: `${Math.min(100, (show.booked / show.seat_limit) * 100)}%` }} />
+                            {editingShowId === show.id ? (
+                              <div className="flex flex-1 flex-col sm:flex-row items-center gap-3">
+                                <input
+                                  type="datetime-local"
+                                  className="bg-white border border-[#33130d]/20 rounded px-2 py-1 text-sm font-semibold text-[#33130d] focus:outline-none focus:ring-2 focus:ring-[#a41e22]/20 flex-1"
+                                  value={editingShowTime.split('.')[0].slice(0, 16)} // Format for datetime-local
+                                  onChange={(e) => setEditingShowTime(e.target.value)}
+                                />
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-[#33130d]/40">Seats:</span>
+                                  <input
+                                    type="number"
+                                    className="bg-white border border-[#33130d]/20 rounded px-2 py-1 text-sm font-semibold text-[#33130d] focus:outline-none focus:ring-2 focus:ring-[#a41e22]/20 w-20"
+                                    value={editingShowSeats}
+                                    onChange={(e) => setEditingShowSeats(Number(e.target.value))}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1 ml-auto">
+                                  <button onClick={() => updateShow(show.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition-colors">
+                                    <Save className="h-4 w-4" />
+                                  </button>
+                                  <button onClick={() => setEditingShowId(null)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
                               </div>
-                              <button onClick={() => deleteShow(show.id)} className="text-[#33130d]/40 hover:text-red-500 p-1"><Trash2 className="h-4 w-4" /></button>
-                            </div>
+                            ) : (
+                              <>
+                                <span className="text-sm font-semibold text-[#33130d]">
+                                  {new Date(show.show_time).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                                </span>
+                                <div className="flex items-center gap-4">
+                                  <span className="text-xs font-semibold text-[#33130d]/60">{show.booked}/{show.seat_limit} booked</span>
+                                  <div className="h-2 w-24 rounded-full bg-[#33130d]/10 overflow-hidden">
+                                    <div className="h-full rounded-full bg-[#a41e22]" style={{ width: `${Math.min(100, (show.booked / show.seat_limit) * 100)}%` }} />
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setEditingShowId(show.id);
+                                        setEditingShowTime(new Date(show.show_time).toISOString());
+                                        setEditingShowSeats(show.seat_limit);
+                                      }}
+                                      className="text-[#33130d]/40 hover:text-[#a41e22] p-1"
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </button>
+                                    <button onClick={() => deleteShow(show.id)} className="text-[#33130d]/40 hover:text-red-500 p-1"><Trash2 className="h-4 w-4" /></button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -505,103 +624,22 @@ export function AdminPage() {
             </div>
           </div>
         ) : (
-          /* Check-In Tab (Scanner Mode) */
-          <div className="space-y-4">
-            {movies.map((movie) => {
-              const movieShows = shows.filter((s) => s.movie_id === movie.id);
-              const isMovieExpanded = expandedMovie === movie.id;
-              
-              return (
-                <div key={movie.id} className="bg-white rounded-2xl overflow-hidden movie-shadow border border-[#33130d]/5">
-                  <button 
-                    onClick={() => setExpandedMovie(isMovieExpanded ? null : movie.id)}
-                    className="w-full flex items-center justify-between p-5 hover:bg-[#f9f0e7]/30 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex bg-[#f9f0e7] rounded-xl p-2.5 text-[#a41e22] shadow-sm">
-                        <Film className="h-6 w-6" />
-                      </div>
-                      <div className="text-left">
-                        <span className="font-cinematic text-xl font-bold text-[#33130d] block">{movie.name}</span>
-                        <span className="text-xs font-bold uppercase tracking-widest text-[#33130d]/40">
-                          {movieShows.length} Screening{movieShows.length !== 1 ? 's' : ''} available
-                        </span>
-                      </div>
-                    </div>
-                    {isMovieExpanded ? <ChevronUp className="h-5 w-5 text-[#33130d]/30" /> : <ChevronDown className="h-5 w-5 text-[#33130d]/30" />}
-                  </button>
-
-                  {isMovieExpanded && (
-                    <div className="bg-[#f9f0e7]/30 border-t border-[#33130d]/5 p-4 space-y-3">
-                      {movieShows.map((show) => {
-                        const isShowExpanded = expandedShow === show.id;
-                        const showBookings = bookings.filter(b => 
-                          b.booking_items.some((item: any) => item.show_id === show.id)
-                        );
-
-                        return (
-                          <div key={show.id} className="bg-white rounded-xl border border-[#33130d]/5 overflow-hidden shadow-sm">
-                            <button 
-                              onClick={() => setExpandedShow(isShowExpanded ? null : show.id)}
-                              className="w-full flex items-center justify-between p-4 bg-white hover:bg-[#a41e22]/5 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <Clock className="h-4 w-4 text-[#a41e22]" />
-                                <span className="font-bold text-[#33130d]">
-                                  {new Date(show.show_time).toLocaleString('en-US', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                                <span className="text-xs bg-[#33130d]/10 px-2 py-0.5 rounded font-bold text-[#33130d]/60">
-                                  {show.booked} Tickets sold
-                                </span>
-                              </div>
-                              {isShowExpanded ? <ChevronUp className="h-4 w-4 text-[#33130d]/20" /> : <ChevronDown className="h-4 w-4 text-[#33130d]/20" />}
-                            </button>
-
-                            {isShowExpanded && (
-                              <div className="border-t border-[#33130d]/5 p-2 space-y-2 bg-[#f9f0e7]/10">
-                                {showBookings.length === 0 ? (
-                                  <div className="py-8 text-center text-sm text-[#33130d]/40 italic">No tickets for this screening.</div>
-                                ) : (
-                                  showBookings.map(b => {
-                                    // Get the specific item for this show from this booking
-                                    const bookingItem = b.booking_items.find((item: any) => item.show_id === show.id);
-                                    const isCheckedIn = !!checkins[bookingItem?.id];
-
-                                    return (
-                                      <div key={b.id} className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-[#33130d]/5 group">
-                                        <div>
-                                          <div className="text-sm font-bold text-[#33130d] truncate max-w-[150px] sm:max-w-none">{b.users?.name}</div>
-                                          <div className="text-[10px] font-mono text-[#a41e22] font-bold uppercase tracking-tight opacity-60">ID: {b.booking_id}</div>
-                                        </div>
-                                        
-                                        {isCheckedIn ? (
-                                          <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
-                                            <UserCheck className="h-4 w-4" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Checked In</span>
-                                          </div>
-                                        ) : (
-                                          <button
-                                            onClick={() => handleCheckIn(bookingItem.id)}
-                                            className="flex items-center gap-2 bg-[#33130d] text-white px-4 py-2 rounded-lg hover:bg-[#a41e22] transition-all hover:shadow-md active:scale-95 shadow-sm"
-                                          >
-                                            <UserCheck className="h-4 w-4" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Check In</span>
-                                          </button>
-                                        )}
-                                      </div>
-                                    );
-                                  })
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          /* Check-In Tab (Scanner Mode CTA) */
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-[#33130d]/5 movie-shadow">
+            <div className="h-24 w-24 bg-[#f9f0e7] rounded-3xl flex items-center justify-center text-[#a41e22] mb-6 shadow-inner">
+              <UserCheck className="h-12 w-12" />
+            </div>
+            <h2 className="font-cinematic text-3xl font-bold text-[#33130d] mb-3">Live Check-In Portal</h2>
+            <p className="text-sm font-medium text-[#33130d]/50 max-w-sm text-center mb-10 leading-relaxed">
+              Open the dedicated scanner mode to search for participants, verify tickets, and manage event entries in real-time.
+            </p>
+            <Link 
+              to="/admin/checkin" 
+              className="flex items-center gap-3 bg-[#33130d] text-white px-8 py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-[#a41e22] transition-all hover:scale-105 active:scale-95 shadow-xl shadow-[#33130d]/20"
+            >
+              Open Check-In Scanner
+              <ExternalLink className="h-5 w-5" />
+            </Link>
           </div>
         )}
       </main>

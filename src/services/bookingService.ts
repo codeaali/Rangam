@@ -80,7 +80,27 @@ export async function createBooking(
   const { error: itemsError } = await supabase.from('booking_items').insert(items);
   if (itemsError) throw itemsError;
 
-  // 5. Build response
+  // 5. Build participants for the Check-In Portal (NEW)
+  const participantRecords = selections.map((s) => {
+    const movie = movies.find((m) => m.id === s.movieId)!;
+    const show = movie.shows.find((sh) => sh.id === s.showId)!;
+    return {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      movie_name: movie.name,
+      show_time: show.show_time,
+      booking_id: bookingId,
+    };
+  });
+
+  const { error: partError } = await supabase.from('participants').insert(participantRecords);
+  if (partError) {
+    console.error('Participant sync failed:', partError);
+    // We don't throw here to avoid failing the whole booking if just the portal sync fails
+  }
+
+  // 6. Build response
   const responseMovies = selections.map((s) => {
     const movie = movies.find((m) => m.id === s.movieId)!;
     const show = movie.shows.find((sh) => sh.id === s.showId)!;
