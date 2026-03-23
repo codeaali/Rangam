@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { AlertCircle, ShoppingCart, X, Ticket } from 'lucide-react';
+import { AlertCircle, ShoppingCart, X, Ticket, Mail } from 'lucide-react';
 import { useMovies } from '../hooks/useMovies';
 import { createBooking } from '../services/bookingService';
 import { MovieCard } from '../components/ui/MovieCard';
@@ -60,23 +60,25 @@ export function BookingPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#33130d]/10 bg-[#f9f0e7]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-12 items-center justify-center">
-              <img src="/logo.png" alt="Festival Logo" className="h-full w-full object-contain" />
-            </div>
-            <div>
-              <h1 className="font-cinematic font-bold text-[#33130d] leading-none text-xl">CineSchool</h1>
-              <p className="text-xs text-[#33130d]/60 leading-none mt-1 font-medium tracking-wide">FESTIVAL 2026</p>
+          <div className="flex items-center">
+            <div className="flex h-14 w-18 items-center justify-center -ml-2">
+              <img src="/logo.png" alt="Rangam Logo" className="h-full w-full object-contain" />
             </div>
           </div>
-          {selections.length > 0 && (
-            <div className="flex items-center gap-2 rounded-full bg-[#33130d]/5 border border-[#33130d]/10 px-3 py-1.5">
-              <ShoppingCart className="h-4 w-4 text-[#a41e22]" />
-              <span className="text-sm font-semibold text-[#33130d]">
-                {totalMovies} movie{totalMovies !== 1 ? 's' : ''}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-6">
+            <a href="mailto:support.rangamfilmfestival@gmail.com" className="hidden lg:flex items-center gap-2 text-[#33130d]/40 hover:text-[#a41e22] transition-colors border-r border-[#33130d]/10 pr-6 mr-2">
+              <Mail className="h-4 w-4" />
+              <span className="text-[11px] font-bold tracking-tight lowercase">support.rangamfilmfestival@gmail.com</span>
+            </a>
+            {selections.length > 0 && (
+              <div className="flex items-center gap-2 rounded-full bg-[#33130d]/5 border border-[#33130d]/10 px-3 py-1.5">
+                <ShoppingCart className="h-4 w-4 text-[#a41e22]" />
+                <span className="text-sm font-semibold text-[#33130d]">
+                  {totalMovies} movie{totalMovies !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

@@ -52,7 +52,7 @@ export function ConfirmationPage() {
       });
       
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 3, canvas.height / 3);
-      pdf.save(`CineSchool-Ticket-${booking.bookingId}.pdf`);
+      pdf.save(`Rangam-Ticket-${booking.bookingId}.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
     }
@@ -67,7 +67,7 @@ export function ConfirmationPage() {
           <div className="absolute top-0 left-0 w-full h-2 bg-[#a41e22]" />
           
           <div className="flex justify-center mb-6">
-            <img src="/logo.png" alt="Logo" className="h-12 object-contain opacity-80" />
+            <img src="/logo.png" alt="Rangam Logo" className="h-16 object-contain" />
           </div>
           {/* Icon */}
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#f9f0e7] text-[#a41e22] shadow-inner shadow-[#33130d]/5">
