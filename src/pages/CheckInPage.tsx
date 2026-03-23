@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
-  Search, UserCheck, ArrowLeft, RefreshCw, Check, AlertCircle, Loader2, X, ChevronRight, Calendar, Film, Clock, Mail
+  Search, UserCheck, ArrowLeft, RefreshCw, Check, Loader2, X, ChevronRight, Calendar, Film, Clock, Mail
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -111,7 +111,7 @@ export function CheckInPage() {
     if (!search) return true;
     const s = search.toLowerCase();
     return p.name.toLowerCase().includes(s) || p.email.toLowerCase().includes(s) || p.booking_id.toLowerCase().includes(s);
-  }).sort((a, b) => {
+  }).sort((a, b: any) => {
     const aChecked = !!a.checked_in_at;
     const bChecked = !!b.checked_in_at;
     if (aChecked !== bChecked) return aChecked ? 1 : -1;
