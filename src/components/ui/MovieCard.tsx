@@ -96,6 +96,7 @@ export function MovieCard({ movie, selectedShow, onShowSelect }: MovieCardProps)
                 return (
                   <button
                     key={show.id}
+                    type="button"
                     disabled={isSoldOut}
                     onClick={(e) => {
                       e.stopPropagation();
